@@ -1,5 +1,6 @@
 import gradio as gr
 import language_tool_python
+import os
 
 tool = language_tool_python.LanguageTool("en-US")
 
@@ -46,4 +47,7 @@ demo = gr.Interface(
     description="Enter English text to find possible grammar mistakes and get corrections."
 )
 
-demo.launch()
+demo.launch(
+    server_name="0.0.0.0",
+    server_port=int(os.environ.get("PORT", 7860))
+)
