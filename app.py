@@ -1,3 +1,4 @@
+
 import gradio as gr
 import language_tool_python
 import os
@@ -9,6 +10,7 @@ def check_grammar(text):
         return "Please enter some text."
 
     mistakes = tool.check(text)
+
     corrected_text = language_tool_python.utils.correct(
         text, mistakes
     )
@@ -33,6 +35,7 @@ def check_grammar(text):
 
     return result
 
+
 demo = gr.Interface(
     fn=check_grammar,
     inputs=gr.Textbox(
@@ -49,5 +52,6 @@ demo = gr.Interface(
 
 demo.launch(
     server_name="0.0.0.0",
-    server_port=int(os.environ.get("PORT", 7860))
+    server_port=int(os.environ.get("PORT", "10000"))
 )
+
