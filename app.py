@@ -1,39 +1,80 @@
-
 import gradio as gr
-import language_tool_python
+import requests
 import os
 
-tool = language_tool_python.LanguageTool("en-US")
+API_URL = "https://api.languagetool.org/v2/check"
 
 def check_grammar(text):
     if not text.strip():
         return "Please enter some text."
 
-    mistakes = tool.check(text)
+    try:
+        response = requests.post(
+            API_URL,
+            data={
+                "text": text,
+                "language": "en-US"
+            },
+            timeout=30
+        )
 
-    corrected_text = language_tool_python.utils.correct(
-        text, mistakes
-    )
+        response.raise_for_status()
+        data = response.json()
 
-    result = "GRAMMAR CHECK RESULTS\n\n"
+        mistakes = data.get("matches", [])
 
-    if mistakes:
-        result += f"Found {len(mistakes)} possible mistake(s).\n\n"
+        result = "GRAMMAR CHECK RESULTS\n\n"
 
-        for i, mistake in enumerate(mistakes, 1):
-            result += f"Mistake {i}: {mistake.message}\n"
+        if mistakes:
+            result += f"Found {len(mistakes)} possible mistake(s).\n\n"
 
-            if mistake.replacements:
-                result += "Suggestions: " + ", ".join(
-                    mistake.replacements[:5]
-                ) + "\n\n"
-    else:
-        result += "No grammar mistakes found!\n\n"
+            for i, mistake in enumerate(mistakes, 1):
+                result += f"Mistake {i}: {mistake['message']}\n"
 
-    result += "CORRECTED TEXT:\n"
-    result += corrected_text
+                replacements = mistake.get("replacements", [])
 
-    return result
+                if replacements:
+                    suggestions = [
+                        item["value"] for item in replacements[:5]
+                    ]
+                    result += "Suggestions: " + ", ".join(
+                        suggestions
+                    ) + "\n"
+
+                result += "\n"
+
+            corrected_text = text
+
+            for mistake in sorted(
+                mistakes,
+                key=lambda item: item["offset"],
+                reverse=True
+            ):
+                replacements = mistake.get("replacements", [])
+
+                if replacements:
+                    start = mistake["offset"]
+                    end = start + mistake["length"]
+                    corrected_text = (
+                        corrected_text[:start]
+                        + replacements[0]["value"]
+                        + corrected_text[end:]
+                    )
+
+        else:
+            result += "No grammar mistakes found!\n\n"
+            corrected_text = text
+
+        result += "CORRECTED TEXT:\n"
+        result += corrected_text
+
+        return result
+
+    except requests.RequestException as error:
+        return f"Grammar checking service error: {error}"
+
+    except Exception as error:
+        return f"Unexpected error: {error}"
 
 
 demo = gr.Interface(
@@ -54,4 +95,3 @@ demo.launch(
     server_name="0.0.0.0",
     server_port=int(os.environ.get("PORT", "10000"))
 )
-
