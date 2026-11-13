@@ -1,2 +1,2 @@
 gradio
-language-tool-python
+requests
